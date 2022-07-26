@@ -5,7 +5,7 @@
 
 float solution(int* arr, int col_index, int n) {
 
-    int result = 0;
+    float result = 0;
 
     for (int i=0; i<n; i++) {
         result += *(arr + col_index + n*i);
