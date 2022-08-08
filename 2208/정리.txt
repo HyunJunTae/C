@@ -107,3 +107,4 @@ signal: segmentation fault (core dumped) 오류 뜨는 이유
 
 문자열을정수로
 조건연산자 왜 오류남???
+조건연산자 자체를 잘못쓰고있었다..!

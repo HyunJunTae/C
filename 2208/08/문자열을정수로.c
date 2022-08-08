@@ -8,7 +8,8 @@ int solution(const char* s) {
     int op = 1;
     int answer = 0;
     if (s[0] == '-' || s[0] == '+') { // 부호 붙은 경우
-        s[0] == '-' ? op = -1 : op = 1; // 조건연산자 왜 안됨???????????
+        // s[0] == '-' ? op = -1 : op = 1; // 조건연산자 왜 안됨???????????
+        op = s[0] == '-' ? -1 : 1;
         for (int i=1; i<strlen(s); i++) {
             answer += (int)s[i] - 48;
             answer *= 10;
