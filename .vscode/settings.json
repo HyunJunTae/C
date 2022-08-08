@@ -30,6 +30,7 @@
   "files.associations": {
     "stdbool.h": "c",
     "stdio.h": "c",
-    "무한반복.C": "cpp"
+    "무한반복.C": "cpp",
+    "stdlib.h": "c"
   }
 }
