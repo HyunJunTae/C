@@ -5,5 +5,10 @@
  * - Ex) bitMask(31) = 011...111 in binary = 0x7fffffff
  */
 int bitMask(int x) {
-  return -1; // TODO
+
+  int bits = 0xffffffff;
+  int bits_moved = bits<<x;
+  bits_moved = ~bits_moved;
+  
+  return bits_moved;
 }

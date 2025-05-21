@@ -2,24 +2,6 @@
 #include <stdlib.h>
 
 void transpose(int **a, int **b, int rows, int cols) {
-    // FILE *inputFile, *outputFile;
-
-    // // input.txt 파일 열기
-    // inputFile = fopen("input.txt", "r");
-
-    // // 행과 열 개수 읽기
-    // fscanf(inputFile, "%d %d", &rows, &cols);
-
-    // // 행렬 데이터 읽기
-    // for (int i = 0; i < rows; i++) {
-    //     for (int j = 0; j < cols; j++) {
-    //         fscanf(inputFile, "%d", a[i][j]);
-    //     }
-    // }
-
-    // // 입력 파일 닫기
-    // fclose(inputFile);
-
 
 
     // transpose 실행
@@ -28,31 +10,6 @@ void transpose(int **a, int **b, int rows, int cols) {
             b[i][j] = a[j][i];
         }
     }
-
-
-
-    
-    // // 출력 파일 열기
-    // outputFile = fopen("output.txt", "w");
-    // if (outputFile == NULL)
-    // {
-    //     printf("출력 파일을 생성할 수 없습니다.\n");
-    //     return 1;
-    // }
-
-    // // 행렬 데이터 쓰기
-    // fprintf(outputFile, "%d %d\n", rows, cols);
-    // for (int i = 0; i < rows; i++)
-    // {
-    //     for (int j = 0; j < cols; j++)
-    //     {
-    //         fprintf(outputFile, "%d ", b[i][j]);
-    //     }
-    //     fprintf(outputFile, "\n");
-    // }
-
-    // // 출력 파일 닫기
-    // fclose(outputFile);
 
     return;
 }
@@ -110,10 +67,6 @@ int main(void) {
 
     // 출력 파일 열기
     outputFile = fopen("output.txt", "w");
-    if (outputFile == NULL) {
-        printf("No Output File\n");
-        return 1;
-    }
 
     // b행렬 데이터를 output.txt에 쓰기
     fprintf(outputFile, "%d %d\n", cols, rows);
@@ -135,8 +88,6 @@ int main(void) {
         free(b[i]);
     }
     free(b);
-
-    printf("Done.\n");
 
     return 0;
 }

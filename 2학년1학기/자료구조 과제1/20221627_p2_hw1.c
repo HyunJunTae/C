@@ -23,7 +23,7 @@ void readPoly(int *start_a, int *finish_a, int *start_b, int *finish_b)
     *start_a = 0;
     *finish_a = poly_size-1;
 
-    for (int i=start_a; i<=finish_a; i++) {
+    for (int i=*start_a; i<=*finish_a; i++) {
         scanf("%f %d", &temp_coef, &temp_exp);
         terms[i].coef = temp_coef;
         terms[i].expon = temp_exp;
@@ -38,7 +38,7 @@ void readPoly(int *start_a, int *finish_a, int *start_b, int *finish_b)
     *start_b = *finish_a+1;
     *finish_b = *start_b + poly_size - 1;
 
-    for (int i=start_b; i<=finish_b; i++) {
+    for (int i=*start_b; i<=*finish_b; i++) {
         scanf("%f %d", &temp_coef, &temp_exp);
         terms[i].coef = temp_coef;
         terms[i].expon = temp_exp;
@@ -61,6 +61,7 @@ void printPoly(int start_c, int finish_c) {
         if (terms[i+1].coef > 0) printf("+");
     }
     
+    printf("\n");
     return;
 }
 
@@ -68,8 +69,8 @@ void pMult(int start_a, int finish_a, int start_b, int finish_b, int *start_c, i
 
     // coef끼리는 곱하고, exp끼리는 더해서 뒤에 추가.
 
-    start_c = finish_b + 1;
-    avail = start_c;
+    *start_c = finish_b + 1;
+    avail = *start_c;
 
     float new_coef;
     int new_exp;
@@ -90,7 +91,7 @@ void pMult(int start_a, int finish_a, int start_b, int finish_b, int *start_c, i
 
             // 계산한 항을 새로운 배열에 추가.
             // 같은 expon이 이미 있으면, coef를 덧셈연산.
-            for (int k=start_c; k<avail; k++) {
+            for (int k=*start_c; k<avail; k++) {
                 if (terms[k].expon == new_exp) {
                     terms[k].coef += new_coef;
                     exp_is_already_in_term = 1;
@@ -107,21 +108,20 @@ void pMult(int start_a, int finish_a, int start_b, int finish_b, int *start_c, i
         }
     }
 
-    finish_c = avail-1;
+    *finish_c = avail-1;
 
-    return;
-}
-
-void sortPoly(int start_c, int finish_c) {
-    for (int i = start_c; i < finish_c; i++) {
-        for (int j = i + 1; j <= finish_c; j++) {
-            if (terms[i].expon < terms[j].expon) {  // 내림차순 정렬 조건
+    // 내림차순으로 정렬
+    for (int i = *start_c; i < *finish_c; i++) {
+        for (int j = i + 1; j <= *finish_c; j++) {
+            if (terms[i].expon < terms[j].expon) {
                 polynomial temp = terms[i];
                 terms[i] = terms[j];
                 terms[j] = temp;
             }
         }
     }
+
+    return;
 }
 
 int main(void) {
@@ -133,18 +133,7 @@ int main(void) {
 
     pMult(start_a, finish_a, start_b, finish_b, &start_c, &finish_c);
 
-    sortPoly(start_c, finish_c);
-
     printPoly(start_c, finish_c);
-
-    // printf("%d", avail);
-    // for (int i=0; i<avail; i++) {
-    //     printf("%f, %d\n", terms[i].coef, terms[i].expon);
-    // }
-
-    // printf("%d %d", start_c, finish_c);
-
-    // printf("%f, %d", terms[0].coef, terms[0].expon);
 
     return 0;
 }
