@@ -26,6 +26,7 @@
 // menu number
 #define MENU_PLAY '1'
 #define MENU_RANK '2'
+#define MENU_RECOMMEND '3'
 #define MENU_EXIT '4'
 
 // 사용자 이름의 길이
@@ -33,11 +34,10 @@
 
 #define CHILDREN_MAX 36
 
-typedef struct _RecNode *RecPointer;
+typedef struct _RecNode* RecPointer;
 typedef struct _RecNode{
 	int lv,score;
 	char (*f)[WIDTH];
-	struct _RecNode *c[CHILDREN_MAX];
 } RecNode;
 
 typedef struct _RankNode *RankPointer;
@@ -366,6 +366,8 @@ void newRank(int score);
  *	return	: (int) 추천 블럭 배치를 따를 때 얻어지는 예상 스코어
  ***********************************************************/
 int recommend(RecNode *root);
+int modified_recommend(RecPointer root);
+
 
 /***********************************************************
  *	추천 기능에 따라 블럭을 배치하여 진행하는 게임을 시작한다.

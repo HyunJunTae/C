@@ -17,6 +17,7 @@ int main(){
 		switch(menu()){
 		case MENU_PLAY: play(); break;
 		case MENU_RANK: rank(); break;
+		case MENU_RECOMMEND: clear(); recommendedPlay(); break;
 		case MENU_EXIT: exit=1; break;
 		default: break;
 		}
@@ -58,6 +59,8 @@ void InitTetris(){
 		}
 	}
 	recommend(recRoot);
+	free(recRoot->f);
+	free(recRoot);
 
 
 	DrawBlockWithFeatures(blockY,blockX,nextBlock[0],blockRotate);
@@ -393,6 +396,9 @@ void BlockDown(int sig){
 				}
 			}
 			recommend(recRoot);
+
+			free(recRoot->f);
+			free(recRoot);
 
 
 			DrawNextBlock(nextBlock);
@@ -817,8 +823,6 @@ void DrawRecommend(int y, int x, int blockID, int blockRotate)
 move(HEIGHT,WIDTH+10);
 }
 
-
-
 int recommend(RecNode * root)
 {
 	int max = 0; // 미리 보이는 블럭의 추천 배치까지 고려했을 때 얻을 수 있는 최대 점수
@@ -827,19 +831,20 @@ int recommend(RecNode * root)
 	
 	int temp_blockY;
 
-
+	
+	RecPointer newRecNode;
 	for (int i=0; i<4; i++) { // 블럭 회전수
 
 		for (int j=-2; j<=WIDTH; j++) { // 블럭 x축 위치
 
-			temp_blockY = 0;
-			
 			// x좌표 잘못되었으면 continue
 			if (CheckToMove(root->f, nextBlock[root->lv], i, temp_blockY, j) == 0) continue;
+
+			temp_blockY = 0;
 			
 			
 			// 노드 초기화
-			RecPointer newRecNode = (RecPointer)malloc(sizeof(RecNode));
+			newRecNode = (RecPointer)malloc(sizeof(RecNode));
 			newRecNode->lv = root->lv+1;
 			newRecNode->score = root->score;
 			newRecNode->f = (char (*)[WIDTH])malloc(sizeof(char) * HEIGHT * WIDTH);
@@ -859,8 +864,6 @@ int recommend(RecNode * root)
 			// 없어진 줄의 수 계산해서 score 계산
 			newRecNode->score += DeleteLine(newRecNode->f);
 
-			// root 노드가 해당 노드를 가리키게 함.
-			root->c[i*WIDTH + j] = newRecNode;
 
 
 			// 만약 아직 최대깊이에 도달하지 못했다면 recursive하게 다음 노드 시작
@@ -877,18 +880,147 @@ int recommend(RecNode * root)
 				}
 			}
 
-			// free(newRecNode->f);
-			// free(newRecNode);
+			free(newRecNode->f);
+			free(newRecNode);
 		}
 	}
 
 	return max;
 }
 
+int modified_recommend(RecNode * root)
+{
+	int max = 0; // 미리 보이는 블럭의 추천 배치까지 고려했을 때 얻을 수 있는 최대 점수
+
+	// user code
+	
+	int temp_blockY;
+
+	
+	RecPointer newRecNode;
+	for (int i=0; i<4; i++) { // 블럭 회전수
+
+		for (int j=-2; j<=WIDTH; j++) { // 블럭 x축 위치
+
+			// x좌표 잘못되었으면 continue
+			if (CheckToMove(root->f, nextBlock[root->lv], i, temp_blockY, j) == 0) continue;
+
+			temp_blockY = 0;
+			
+			
+			// 노드 초기화
+			newRecNode = (RecPointer)malloc(sizeof(RecNode));
+			newRecNode->lv = root->lv+1;
+			newRecNode->score = root->score;
+			newRecNode->f = (char (*)[WIDTH])malloc(sizeof(char) * HEIGHT * WIDTH);
+			for (int i = 0; i < HEIGHT; i++) {
+				for (int j = 0; j < WIDTH; j++) {
+					newRecNode->f[i][j] = root->f[i][j];
+				}
+			}
+
+			// 블록이 해당 위치, 해당 회전값에서 어디까지 내려갈 수 있는지 계산
+			while (CheckToMove(root->f, nextBlock[root->lv], i, temp_blockY, j)) {
+				temp_blockY++;
+			}
+			temp_blockY--;
+			// 해당 위치의 블럭 그려넣고 맞닿은 면 점수 계산
+			newRecNode->score += AddBlockToField(newRecNode->f, nextBlock[root->lv], i, temp_blockY, j);
+			// 없어진 줄의 수 계산해서 score 계산
+			newRecNode->score += DeleteLine(newRecNode->f);
 
 
+
+			// 만약 아직 최대깊이에 도달하지 못했다면 recursive하게 다음 노드 시작
+			if (newRecNode->lv < VISIBLE_BLOCKS) {
+				newRecNode->score = recommend(newRecNode);
+			}
+
+			if (max < newRecNode->score) {
+				max = newRecNode->score;
+				if (newRecNode->lv == 1) {
+					recommendX = j;
+					recommendY = temp_blockY;
+					recommendR = i;
+				}
+			}
+
+			free(newRecNode->f);
+			free(newRecNode);
+		}
+	}
+
+	return max;
+}
 
 void recommendedPlay()
 {
-	// user code
+
+	nodelay(stdscr, TRUE); // getch를 해도 코드가 멈추지 않도록 설정
+
+	// InitTetris 로 테트리스 기본 설정
+	InitTetris();
+
+	// 게임 오버가 될 때까지
+	// recommend 함수로 추천 위치 받아내고
+	// 해당 위치에 블록 그리기
+	int temp_score;
+	char ch;
+	do{
+		// recRoot 선언
+		recRoot = (RecPointer)malloc(sizeof(RecNode));
+		recRoot->score = 0;
+		recRoot->lv = 0;
+		recRoot->f = (char (*)[WIDTH])malloc(sizeof(char) * HEIGHT * WIDTH);
+		for (int i = 0; i < HEIGHT; i++) {
+			for (int j = 0; j < WIDTH; j++) {
+				recRoot->f[i][j] = field[i][j];
+			}
+		}
+		
+		// 추천 함수 사용해서 추천 위치 전역변수에 저장
+		modified_recommend(recRoot);
+
+		// 저장된 전역변수에 따라 점수 계산 및 블록 그리기
+		temp_score = 0;
+		temp_score += AddBlockToField(field, nextBlock[0], recommendR, recommendY, recommendX);
+		temp_score += DeleteLine(field);
+		score += temp_score;
+
+		// 다음 블록 준비
+		nextBlock[0] = nextBlock[1];
+		nextBlock[1] = nextBlock[2];
+		nextBlock[2] = rand() % 7;
+		blockX = WIDTH / 2 - 2;
+		blockY = -1;
+		blockRotate = 0;
+
+		// 계산된 점수 출력, 필드 다시 그리기, 블럭 다시 그리기
+		PrintScore(score);
+		DrawField();
+		DrawNextBlock(nextBlock);
+		refresh();
+
+		// 만약 시작 위치에 새로운 블럭 못들어가면, 게임 오버
+        if (!CheckToMove(field, nextBlock[0], blockRotate, blockY, blockX)) {
+            gameOver = 1;
+		}
+		
+		// 2초 대기
+		sleep(1);
+
+		ch = getch();
+        if (ch == 'q' || ch == 'Q') {
+            break; // q 입력 시 종료
+        }
+
+	}while(!gameOver);
+
+	nodelay(stdscr, FALSE);
+
+	DrawBox(HEIGHT/2-1,WIDTH/2-5,1,10);
+	move(HEIGHT/2,WIDTH/2-4);
+	printw("GameOver!!");
+	refresh();
+	getch();
 }
