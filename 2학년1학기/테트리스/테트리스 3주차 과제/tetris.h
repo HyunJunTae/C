@@ -38,6 +38,10 @@ typedef struct _RecNode* RecPointer;
 typedef struct _RecNode{
 	int lv,score;
 	char (*f)[WIDTH];
+	int height_array[WIDTH];
+	int blank_count;
+	int min_y;
+	RecPointer leftChild;
 } RecNode;
 
 typedef struct _RankNode *RankPointer;

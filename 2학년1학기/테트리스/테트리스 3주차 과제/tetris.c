@@ -52,13 +52,16 @@ void InitTetris(){
 	recRoot = (RecPointer)malloc(sizeof(RecNode));
 	recRoot->score = 0;
 	recRoot->lv = 0;
+	recRoot->blank_count = 0;
+	recRoot->min_y = 100;
 	recRoot->f = (char (*)[WIDTH])malloc(sizeof(char) * HEIGHT * WIDTH);
 	for (int i = 0; i < HEIGHT; i++) {
 		for (int j = 0; j < WIDTH; j++) {
 			recRoot->f[i][j] = field[i][j];
 		}
 	}
-	recommend(recRoot);
+	modified_recommend(recRoot);
+
 	free(recRoot->f);
 	free(recRoot);
 
@@ -389,13 +392,15 @@ void BlockDown(int sig){
 			recRoot = (RecPointer)malloc(sizeof(RecNode));
 			recRoot->score = 0;
 			recRoot->lv = 0;
+			recRoot->blank_count = 0;
+			recRoot->min_y = 100;
 			recRoot->f = (char (*)[WIDTH])malloc(sizeof(char) * HEIGHT * WIDTH);
 			for (int i = 0; i < HEIGHT; i++) {
 				for (int j = 0; j < WIDTH; j++) {
 					recRoot->f[i][j] = field[i][j];
 				}
 			}
-			recommend(recRoot);
+			modified_recommend(recRoot);
 
 			free(recRoot->f);
 			free(recRoot);
@@ -890,54 +895,147 @@ int recommend(RecNode * root)
 
 int modified_recommend(RecNode * root)
 {
-	int max = 0; // 미리 보이는 블럭의 추천 배치까지 고려했을 때 얻을 수 있는 최대 점수
+	int count = 5;
+	int max = 0;
+	int blank_count = 100;
+	int min_y = 0;
+
+	int root_blank_count = root->blank_count;
+	int root_score = root->score;
 
 	// user code
 	
 	int temp_blockY;
 
+	int rotate_num;
+	if (nextBlock[root->lv] == 4) {
+		rotate_num = 1;
+	}
+	else if (nextBlock[root->lv] == 0 || nextBlock[root->lv] == 5 || nextBlock[root->lv] == 6) {
+		rotate_num = 2;
+	}
+	else {
+		rotate_num = 4;
+	}
 	
 	RecPointer newRecNode;
-	for (int i=0; i<4; i++) { // 블럭 회전수
+	for (int i=0; i<rotate_num; i++) { // 블럭 회전수
 
 		for (int j=-2; j<=WIDTH; j++) { // 블럭 x축 위치
+
+			temp_blockY = 0;
 
 			// x좌표 잘못되었으면 continue
 			if (CheckToMove(root->f, nextBlock[root->lv], i, temp_blockY, j) == 0) continue;
 
-			temp_blockY = 0;
-			
-			
+
+
 			// 노드 초기화
 			newRecNode = (RecPointer)malloc(sizeof(RecNode));
 			newRecNode->lv = root->lv+1;
-			newRecNode->score = root->score;
+			newRecNode->score = root_score;
+			newRecNode->blank_count = root_blank_count;
+			newRecNode->min_y = 0;
 			newRecNode->f = (char (*)[WIDTH])malloc(sizeof(char) * HEIGHT * WIDTH);
-			for (int i = 0; i < HEIGHT; i++) {
-				for (int j = 0; j < WIDTH; j++) {
-					newRecNode->f[i][j] = root->f[i][j];
+			for (int p = 0; p < HEIGHT; p++) {
+				for (int q = 0; q < WIDTH; q++) {
+					newRecNode->f[p][q] = root->f[p][q];
 				}
 			}
 
+
 			// 블록이 해당 위치, 해당 회전값에서 어디까지 내려갈 수 있는지 계산
-			while (CheckToMove(root->f, nextBlock[root->lv], i, temp_blockY, j)) {
+			while (CheckToMove(newRecNode->f, nextBlock[root->lv], i, temp_blockY, j)) {
 				temp_blockY++;
 			}
 			temp_blockY--;
-			// 해당 위치의 블럭 그려넣고 맞닿은 면 점수 계산
-			newRecNode->score += AddBlockToField(newRecNode->f, nextBlock[root->lv], i, temp_blockY, j);
+
+			
+			// 해당 블럭 아래에 빈칸 개수 계산
+			for (int a = 0; a<4; a++) {
+				for (int b = 0; b<4; b++) {
+					if (block[nextBlock[root->lv]][i][a][b] == 1) {
+
+						if (block[nextBlock[root->lv]][i][a+1][b] == 0) {
+
+							int c = temp_blockY+a+1;
+							while (newRecNode->f[c][j+b] == 0 && c <HEIGHT) {
+								newRecNode->blank_count++;
+								c++;
+							}	
+							// 블록의 가장 낮은 지점을 저장
+							newRecNode->min_y = temp_blockY+a;
+						}
+					}
+				}
+			}
+
+			// for (int b = 0; b < 4; b++) {
+			// 	int max_a = -1;
+			// 	for (int a = 3; a >= 0; a--) {
+			// 		if (block[nextBlock[root->lv]][i][a][b] == 1) {
+			// 			max_a = a;
+			// 			break;
+			// 		}
+			// 	}
+			// 	if (max_a != -1) {
+			// 		int c = temp_blockY + max_a + 1;
+			// 		while (c < HEIGHT && root->f[c][j+b] == 0) {
+			// 			newRecNode->blank_count++;
+			// 			c++;
+			// 		}
+
+			// 		if (newRecNode->min_y < temp_blockY + max_a) {
+			// 			newRecNode->min_y = temp_blockY + max_a;
+			// 		}
+			// 	}
+			// }
+
+			
+			
+			// 만약 계산된 블록 아래 빈칸 수가 다른 경우에 계산된 빈칸 수보다 작거나 같다면,
+			// min_y를 비교해서 min_y의 값이 더 큰 노드, 즉 블록이 더 아래에 있는 노드를 선택.
+			// min_y가 같다면, 점수가 더 큰 노드를 선택
+			
+			// 일단 이번 노드의 점수 먼저 계산
 			// 없어진 줄의 수 계산해서 score 계산
+			// 해당 위치의 블럭 그려넣고 맞닿은 면 점수 계산
+			// move(count, 40);
+			// printw("blank_count: %d, tempblockY : %d, i:%d, j:%d, min_y:%d, score:%d", newRecNode->blank_count, temp_blockY, i, j, newRecNode->min_y, newRecNode->score);
+			// count++;
+			newRecNode->score += AddBlockToField(newRecNode->f, nextBlock[root->lv], i, temp_blockY, j);
 			newRecNode->score += DeleteLine(newRecNode->f);
 
-
+			
+			// 만약 계산된 블록 아래 빈칸 수가, 다른 경우에 계산된 빈칸 수보다 크다면, 그 노드는 스킵
+			if (newRecNode->blank_count > blank_count) {
+				free(newRecNode->f);
+				free(newRecNode);
+				continue;
+			}
 
 			// 만약 아직 최대깊이에 도달하지 못했다면 recursive하게 다음 노드 시작
 			if (newRecNode->lv < VISIBLE_BLOCKS) {
-				newRecNode->score = recommend(newRecNode);
+				modified_recommend(newRecNode);
 			}
 
-			if (max < newRecNode->score) {
+			
+
+			// 만약에 blank_count 가 기존의 값보다 더 작다면,
+			// blank_count, min_y, max 값을 갱신하고,
+			// recommendX, recommendY, recommendR 값도 갱신
+			if (newRecNode->blank_count < blank_count) {
+				// move(count, 40);
+				// printw("black count renew!\n");
+				// count++;
+				blank_count = newRecNode->blank_count;
+				min_y = newRecNode->min_y;
 				max = newRecNode->score;
+
+				root->blank_count = blank_count;
+				// root->min_y = min_y;
+				root->score = max;
+
 				if (newRecNode->lv == 1) {
 					recommendX = j;
 					recommendY = temp_blockY;
@@ -945,12 +1043,59 @@ int modified_recommend(RecNode * root)
 				}
 			}
 
+			// 만약에 blank_count 가 기존의 값과 같다면,
+			else if (blank_count == newRecNode->blank_count) {
+
+				// min_y 값이 기존의 값보다 더 크다면, 즉 블럭이 더 아래에 있다면
+				// min_y, max 값을 갱신하고, recommendX, recommendY, recommendR 값도 갱신
+				if (min_y < newRecNode->min_y) {
+					// move(count, 40);
+					// printw("miny renew!\n");
+					// count++;
+					min_y = newRecNode->min_y;
+					max = newRecNode->score;
+
+					// root->min_y = min_y;
+					root->score = max;
+
+					if (newRecNode->lv == 1) {
+						recommendX = j;
+						recommendY = temp_blockY;
+						recommendR = i;
+					}
+				}
+
+				// min_y 값이 기존의 값과 같다면, 즉 블럭이 같은 높이에 있다면
+				else if (min_y == newRecNode->min_y) {
+					
+
+					// max 값이 기존의 값보다 더 크다면
+					// max 값 갱신하고, recommendX, recommendY, recommendR 값도 갱신
+					if (max < newRecNode->score) {
+						// move(count, 40);
+						// printw("max renew!\n");
+						// count++;
+						max = newRecNode->score;
+
+						// root->blank_count = blank_count;
+						// root->min_y = min_y;
+						root->score = max;
+
+						if (newRecNode->lv == 1) {
+							recommendX = j;
+							recommendY = temp_blockY;
+							recommendR = i;
+						}
+					}
+				}
+			}
+
+			// 이렇게 하고 나면, blank_count, min_y, max 값이 해당 반복문에서의 최적값으로 설정됨.
+
 			free(newRecNode->f);
 			free(newRecNode);
 		}
 	}
-
-	return max;
 }
 
 void recommendedPlay()
@@ -971,6 +1116,8 @@ void recommendedPlay()
 		recRoot = (RecPointer)malloc(sizeof(RecNode));
 		recRoot->score = 0;
 		recRoot->lv = 0;
+		recRoot->blank_count = 0;
+		recRoot->min_y = 100;
 		recRoot->f = (char (*)[WIDTH])malloc(sizeof(char) * HEIGHT * WIDTH);
 		for (int i = 0; i < HEIGHT; i++) {
 			for (int j = 0; j < WIDTH; j++) {
@@ -1006,7 +1153,7 @@ void recommendedPlay()
             gameOver = 1;
 		}
 		
-		// 2초 대기
+		// 1초 대기
 		sleep(1);
 
 		ch = getch();
