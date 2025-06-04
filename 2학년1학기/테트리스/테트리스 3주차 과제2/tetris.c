@@ -2,8 +2,8 @@
 
 static struct sigaction act, oact;
 
-long evalSize(RecPointer head) {
-	return (sizeof(head) + 4 + 4 + 4 + 4 + (sizeof(char) * HEIGHT * WIDTH));
+int evalSize() {
+	return (sizeof(head) + 4 + 4 + 4  + (sizeof(char) * HEIGHT * WIDTH));
 } // 노드포인터 lv score nlank_count score 필드
 
 int main(){
@@ -21,7 +21,10 @@ int main(){
 		switch(menu()){
 		case MENU_PLAY: play(); break;
 		case MENU_RANK: rank(); break;
-		case MENU_RECOMMEND: clear(); recommendedPlay(); break;
+		case MENU_RECOMMEND:
+			clear();
+			recommendedPlay();
+			break;
 		case MENU_EXIT: exit=1; break;
 		default: break;
 		}
@@ -57,7 +60,6 @@ void InitTetris(){
 	recRoot->score = 0;
 	recRoot->lv = 0;
 	recRoot->blank_count = 0;
-	recRoot->min_y = 100;
 	recRoot->f = (char (*)[WIDTH])malloc(sizeof(char) * HEIGHT * WIDTH);
 	for (int i = 0; i < HEIGHT; i++) {
 		for (int j = 0; j < WIDTH; j++) {
@@ -397,7 +399,6 @@ void BlockDown(int sig){
 			recRoot->score = 0;
 			recRoot->lv = 0;
 			recRoot->blank_count = 0;
-			recRoot->min_y = 100;
 			recRoot->f = (char (*)[WIDTH])malloc(sizeof(char) * HEIGHT * WIDTH);
 			for (int i = 0; i < HEIGHT; i++) {
 				for (int j = 0; j < WIDTH; j++) {
@@ -899,6 +900,11 @@ int recommend(RecNode * root)
 int modified_recommend(RecNode * root)
 {
 
+	clock_t start_rec, stop_rec;
+	start_rec = clock();
+
+	int space_size_counted = 0;
+
 	int count = 5;
 	int max = 0;
 	int blank_count = 100;
@@ -933,30 +939,15 @@ int modified_recommend(RecNode * root)
 			if (CheckToMove(root->f, nextBlock[root->lv], i, temp_blockY, j) == 0) continue;
 
 
-
-			// 노드 초기화
-			newRecNode = (RecPointer)malloc(sizeof(RecNode));
-			newRecNode->lv = root->lv+1;
-			newRecNode->score = root_score;
-			newRecNode->blank_count = root_blank_count;
-			newRecNode->min_y = 0;
-			newRecNode->f = (char (*)[WIDTH])malloc(sizeof(char) * HEIGHT * WIDTH);
-			for (int p = 0; p < HEIGHT; p++) {
-				for (int q = 0; q < WIDTH; q++) {
-					newRecNode->f[p][q] = root->f[p][q];
-				}
-			}
-
-			space_tetris += evalSize(newRecNode);
-
-
 			// 블록이 해당 위치, 해당 회전값에서 어디까지 내려갈 수 있는지 계산
-			while (CheckToMove(newRecNode->f, nextBlock[root->lv], i, temp_blockY, j)) {
+			while (CheckToMove(root->f, nextBlock[root->lv], i, temp_blockY, j)) {
 				temp_blockY++;
 			}
 			temp_blockY--;
 
-			
+
+			int temp_blankcount = root->blank_count;
+			int temp_miny = 0;
 			// 해당 블럭 아래에 빈칸 개수 계산
 			for (int a = 0; a<4; a++) {
 				for (int b = 0; b<4; b++) {
@@ -965,24 +956,36 @@ int modified_recommend(RecNode * root)
 						if (block[nextBlock[root->lv]][i][a+1][b] == 0) {
 
 							int c = temp_blockY+a+1;
-							while (newRecNode->f[c][j+b] == 0 && c <HEIGHT) {
-								newRecNode->blank_count++;
+							while (root->f[c][j+b] == 0 && c <HEIGHT) {
+								temp_blankcount;
 								c++;
 							}	
 							// 블록의 가장 낮은 지점을 저장
-							newRecNode->min_y = temp_blockY+a;
+							temp_miny = temp_blockY+a;
 						}
 					}
 				}
 			}
 
-			// 만약 계산된 블록 아래 빈칸 수가, 다른 경우에 계산된 빈칸 수보다 크다면, 그 노드는 스킵
-			if (newRecNode->min_y < min_y) {
-				free(newRecNode->f);
-				free(newRecNode);
+			// 만약 계산된 블록의 y축 위치가, 다른 경우보다 더 작다면, 즉 해당 블록이 더 위에 있다면, 그 노드는 스킵
+			if (temp_miny < min_y) {
 				continue;
 			}
-			
+
+
+
+			// 노드 초기화
+			newRecNode = (RecPointer)malloc(sizeof(RecNode));
+			newRecNode->lv = root->lv+1;
+			newRecNode->score = root_score;
+			newRecNode->blank_count = temp_blankcount;
+			newRecNode->f = (char (*)[WIDTH])malloc(sizeof(char) * HEIGHT * WIDTH);
+			for (int p = 0; p < HEIGHT; p++) {
+				for (int q = 0; q < WIDTH; q++) {
+					newRecNode->f[p][q] = root->f[p][q];
+				}
+			}
+
 			// 일단 이번 노드의 점수 먼저 계산
 			// 없어진 줄의 수 계산해서 score 계산
 			// 해당 위치의 블럭 그려넣고 맞닿은 면 점수 계산
@@ -998,13 +1001,12 @@ int modified_recommend(RecNode * root)
 
 			
 
-			if (newRecNode->min_y > min_y) {
-				min_y = newRecNode->min_y;
+			if (temp_miny > min_y) {
+				min_y = temp_miny;
 				blank_count = newRecNode->blank_count;
 				max = newRecNode->score;
 
 				root->blank_count = blank_count;
-				// root->min_y = min_y;
 				root->score = max;
 
 				if (newRecNode->lv == 1) {
@@ -1014,7 +1016,7 @@ int modified_recommend(RecNode * root)
 				}
 			}
 
-			else if (min_y == newRecNode->min_y) {
+			else if (min_y == temp_miny) {
 
 				if (newRecNode->blank_count < blank_count)
 				{
@@ -1022,7 +1024,6 @@ int modified_recommend(RecNode * root)
 					max = newRecNode->score;
 
 					root->blank_count = blank_count;
-					// root->min_y = min_y;
 					root->score = max;
 
 					if (newRecNode->lv == 1) {
@@ -1037,8 +1038,6 @@ int modified_recommend(RecNode * root)
 					if (max < newRecNode->score) {
 						max = newRecNode->score;
 
-						// root->blank_count = blank_count;
-						// root->min_y = min_y;
 						root->score = max;
 
 						if (newRecNode->lv == 1) {
@@ -1054,64 +1053,94 @@ int modified_recommend(RecNode * root)
 
 			free(newRecNode->f);
 			free(newRecNode);
+
 		}
 	}
 
-
+	stop_rec = clock();
+	time_tetris += (double)(stop_rec - start_rec) / CLOCKS_PER_SEC;
 }
 
 void recommendedPlay()
 {
-
 	t = 0;
 	time_tetris = 0;
 	space_tetris = 0;
 
-
 	time_t start, stop;
-	clock_t start_rec, stop_rec;
 	start = time(NULL);
 
-	int count = 5;
+	int temp_score;
 
 	nodelay(stdscr, TRUE); // getch를 해도 코드가 멈추지 않도록 설정
 
 	// InitTetris 로 테트리스 기본 설정
 	
-	start_rec = clock();
 	InitTetris();
-	stop_rec = clock();
-	time_tetris += (double)(stop_rec - start_rec) / CLOCKS_PER_SEC;
+
+	// 공간 계산.
+	// 현재 링크드 리스트의 구조는, 모든 트리의 모든 노드를 계속해서 유지해주는 것이 아니라,
+	// 더 이상 내려갈 깊이가 없는 경우, 만들어진 노드를 계산한 후에, 바로 지워줌.
+	// 따라서 n개의 다음 블럭에 대해 예측을 하는 경우 사용되는 최대 공간은 (노드 하나당 크기) * n 임. 그 이상의 공간은 필요하지 않음.
+	// modified_recommend 함수 실행에서, 필요한 메모리는 (노드 하나 당 크기) * n 이므로, 한 번 계산할 때마다 그것만 더해주면 됨.
+	space_tetris = space_tetris + (evalSize() * VISIBLE_BLOCKS);
+
+	// 저장된 전역변수에 따라 점수 계산 및 블록 그리기
+	temp_score = 0;
+	temp_score += AddBlockToField(field, nextBlock[0], recommendR, recommendY, recommendX);
+	temp_score += DeleteLine(field);
+	score += temp_score;
+
+	// 다음 블록 준비
+	nextBlock[0] = nextBlock[1];
+	nextBlock[1] = nextBlock[2];
+	nextBlock[2] = rand() % 7;
+	blockX = WIDTH / 2 - 2;
+	blockY = -1;
+	blockRotate = 0;
+
+	// 계산된 점수 출력, 필드 다시 그리기, 블럭 다시 그리기
+	PrintScore(score);
+	DrawField();
+	DrawNextBlock(nextBlock);
+	refresh();
 
 	// 총 시간 t 계산
-	move(30, 50);
-	printw("t : %.15lf seconds\n", t);
+	move(25, 25);
+	printw("t :			%f \n", t);
 
 	// t 시간 동안 낸 점수 출력
-	move(31, 50);
-	printw("score(t) : %d points\n", score);
+	move(26, 25);
+	printw("score(t) :		%d \n", score);
 
-	move(32, 50);
-	printw("time(t): %.15lf seconds\n", time_tetris);
+	// 추천 함수 실행 시간 출력
+	move(27, 25);
+	printw("time(t):		%f \n", time_tetris);
 
-	move(33, 50);
-	printw("space(t): %.15lf \n", space_tetris);
+	// 추천 함수 실행 공간 출력
+	move(28, 25);
+	printw("space(t):		%d \n", space_tetris);
 
+	// 시간 효율성 출력
+	move(29, 25);
+	printw("Time Efficiency:	%f \n", score / time_tetris);
 
+	// 공간 효율성 출력
+	move(30, 25);
+	printw("Space Efficiency:	%f \n", (double)score / space_tetris);
+	refresh();
 
+	sleep(1);
 
-	// 게임 오버가 될 때까지
-	// recommend 함수로 추천 위치 받아내고
-	// 해당 위치에 블록 그리기
-	int temp_score;
 	char ch;
 	do{
+		ch = getch();
+
 		// recRoot 선언
 		recRoot = (RecPointer)malloc(sizeof(RecNode));
 		recRoot->score = 0;
 		recRoot->lv = 0;
 		recRoot->blank_count = 0;
-		recRoot->min_y = 100;
 		recRoot->f = (char (*)[WIDTH])malloc(sizeof(char) * HEIGHT * WIDTH);
 		for (int i = 0; i < HEIGHT; i++) {
 			for (int j = 0; j < WIDTH; j++) {
@@ -1120,11 +1149,8 @@ void recommendedPlay()
 		}
 
 		// 추천 함수 사용해서 추천 위치 전역변수에 저장
-		start_rec = clock();
-
 		modified_recommend(recRoot);
-		stop_rec = clock();
-		time_tetris += (double)(stop_rec - start_rec) / CLOCKS_PER_SEC;
+		space_tetris = space_tetris + (evalSize() * VISIBLE_BLOCKS);
 
 		// 저장된 전역변수에 따라 점수 계산 및 블록 그리기
 		temp_score = 0;
@@ -1151,73 +1177,50 @@ void recommendedPlay()
             gameOver = 1;
 		}
 		
-		// 1초 대기
-		sleep(1);
+		// // 1초 대기
+		// sleep(1);
 
 
 
 		stop = time(NULL);
-
 		// 총 시간 t 계산
 		t = (double)difftime(stop, start);
-		move(30, 50);
-		printw("t : %.15lf seconds\n", t);
+		move(25, 25);
+		printw("t :			%f \n", t);
 
 		// t 시간 동안 낸 점수 출력
-		move(31, 50);
-		printw("score(t) : %d points\n", score);
+		move(26, 25);
+		printw("score(t) :		%d \n", score);
 
-		move(32, 50);
-		printw("time(t): %.15lf seconds\n", time_tetris);
+		// 추천 함수 실행 시간 출력
+		move(27, 25);
+		printw("time(t):		%f \n", time_tetris);
 
-		move(33, 50);
-		printw("space(t): %.15lf \n", space_tetris);
+		// 추천 함수 실행 공간 출력
+		move(28, 25);
+		printw("space(t):		%d \n", space_tetris);
 
-		// move(9, 50);
-		// printw("start_rec: %d \n", start_rec);
+		// 시간 효율성 출력
+		move(29, 25);
+		printw("Time Efficiency:	%f \n", score / time_tetris);
 
-		// move(10, 50);
-		// printw("stop_rec: %d \n", stop_rec);
+		// 공간 효율성 출력
+		move(30, 25);
+		printw("Space Efficiency:	%f \n", (double)score / space_tetris);
+		refresh();
 
-
-		// space_tetris++;
-		// move(11, 50);
-		// printw("modified space(t): %.15lf \n", space_tetris);
-
-		// move(12, 50);
-		// printw("start_rec: %.15lf \n", start_rec);
-
-		// move(13, 50);
-		// printw("stop_rec: %.15lf \n", stop_rec);
-
-		ch = getch();
         if (ch == 'q' || ch == 'Q') {
             break; // q 입력 시 종료
         }
+		
+		// 1초 대기
+		sleep(1);
 
 
 	}while(!gameOver);
 
 	nodelay(stdscr, FALSE);
 
-
-	// 시간 측정 종료
-	stop = time(NULL);
-
-	// // 총 시간 t 계산
-	// t = (double)difftime(stop, start);
-	// move(5, 50);
-	// printw("t : %lf seconds\n", t);
-
-	// // t 시간 동안 낸 점수 출력
-	// move(6, 50);
-	// printw("score(t) : %d points\n", score);
-
-	// move(7, 50);
-	// printw("time(t): %lf seconds\n", time_tetris);
-
-	// move(8, 50);
-	// printw("space(t): %lf \n", space_tetris);
 
 	DrawBox(HEIGHT/2-1,WIDTH/2-5,1,10);
 	move(HEIGHT/2,WIDTH/2-4);

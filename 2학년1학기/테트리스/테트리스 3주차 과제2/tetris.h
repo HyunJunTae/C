@@ -39,7 +39,6 @@ typedef struct _RecNode{
 	int lv,score;
 	char (*f)[WIDTH];
 	int blank_count;
-	int min_y;
 } RecNode;
 
 typedef struct _RankNode *RankPointer;
@@ -55,7 +54,7 @@ int score_number = 0;
 
 double t;
 double time_tetris;
-double space_tetris;
+int space_tetris;
 
 
 /* [blockShapeID][# of rotate][][]*/
